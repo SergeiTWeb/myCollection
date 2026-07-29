@@ -74,10 +74,10 @@ cd myСollection
    - Сетевой тип: MySQL (TCP/IP)
    - Хост: 127.0.0.1 (или localhost)
    - Пользователь: root
-   - Пароль: оставьте пустым (или root, если используете MAMP/XAMPP).
+   - Пароль: оставьте пустым.
    - Подключитесь.
 
-3. В появившемся окне: Файл -> Создать -> Базу Данных
+3. В появившемся окне: (правый клик) Файл -> Создать -> Базу Данных
 4. Назовите её, например, mycollection_local. Кодировка: utf8mb4.
 5. Выберите эту новую базу данных, перейдите на вкладку Запрос (Query) и вставьте мастер-скрипт для создания таблиц:
 
@@ -174,19 +174,22 @@ EMAIL_PASS=your_16_digit_gmail_app_password
 npm run dev
 ```
 
-Вы должны увидеть: Backend running on http://localhost:3001.
+- Откройте http://localhost:3001 в вашем браузере.
+  Если нет ошибок, то вы должны увидеть:
+  {"status":"online","time":"\*текущее время и дата\*\*","message":"Backend is running and connected to DB!"}
 
 ### 4. Настройка фронтенда
 
 1. Откройте новое окно терминала:
 
 ```bash
-cd frontend # (or the root directory if Vite is in the root)
+cd #(the root directory if Vite is in the root)
 npm install
 npm run dev
 ```
 
 - Откройте http://localhost:5173 в вашем браузере.
+  Если нет ошибок, то вы должны увидеть главную страницу приложения.
 
 ### Руководство пользователя
 
