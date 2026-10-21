@@ -219,3 +219,7 @@ npm run dev
 Дипломный проект по курсу "Веб-Разарбочик / full-stack" Университет ITMO (Санкт-Петербург, Россия, 2026)
 
 - https://web.sergeitumanov.com
+
+- Если проект понравился можете купить мне чашечку кофе [поддержать автора](https://www.paypal.com/paypalme/nctmmrn) :)
+
+  ** Happy Coding! **
