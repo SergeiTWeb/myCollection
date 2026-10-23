@@ -52,6 +52,7 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   transition: background-color 0.3s ease, color 0.3s ease;
+  margin: 0;
 }
 
 img {
@@ -65,6 +66,7 @@ img {
   padding: 0 24px;
   flex: 1;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* =========================================
@@ -131,7 +133,7 @@ img {
   border-radius: 999px;
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -141,6 +143,8 @@ img {
 .theme-toggle:hover {
   background-color: var(--accent-color);
   color: var(--button-text);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .icon-toggle {
@@ -207,17 +211,17 @@ img {
   margin: 0;
 }
 
-.footer-link {
-  display: inline-flex;
+.footer-links {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: color 0.2s;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.footer-link:hover {
-  color: var(--text-primary);
+.footer-sep {
+  color: var(--text-secondary);
+  opacity: 0.6;
 }
 
 /* =========================================
@@ -321,7 +325,7 @@ img {
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   background-color: var(--accent-color);
   color: var(--button-text);
   text-decoration: none;
@@ -333,6 +337,8 @@ img {
 
 .btn:hover:not(:disabled) {
   background-color: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 .btn:disabled {
@@ -348,6 +354,8 @@ img {
 
 .btn-secondary:hover:not(:disabled) {
   background-color: var(--card-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .btn-danger {
@@ -377,15 +385,15 @@ img {
   border: 1px solid var(--border-color);
   border-radius: 14px;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow);
 }
 
 .item-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.1);
 }
 
 .item-card img,
@@ -540,7 +548,7 @@ textarea:focus {
 
 .page-controls-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -597,7 +605,7 @@ textarea:focus {
   border-radius: 999px;
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -608,6 +616,8 @@ textarea:focus {
   background: var(--accent-color);
   color: var(--button-text);
   border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .search-status {
@@ -628,9 +638,56 @@ textarea:focus {
   font-weight: 600;
 }
 
-.search-status-text {
+.result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
   color: var(--text-secondary);
-  max-width: 420px;
+}
+
+.result-meta p {
+  margin: 0;
+}
+
+.result-meta strong {
+  color: var(--text-primary);
+}
+
+.result-meta .barcode {
+  word-break: break-all;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.link-btn:hover {
+  opacity: 0.7;
+}
+
+.artist-section {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.artist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 /* =========================================
@@ -667,13 +724,13 @@ textarea:focus {
   border-radius: 14px;
   padding: 16px;
   align-items: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   box-shadow: var(--shadow);
 }
 
 .list-item:hover {
-  transform: translateX(4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  transform: translateX(6px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
 .list-item img,

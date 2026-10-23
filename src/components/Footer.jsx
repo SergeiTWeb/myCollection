@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="app-footer">
       <p>&copy; {currentYear} Sergei Tumanov. All rights reserved.</p>
       <p>Built with React &amp; Node.js • Music data provided by Discogs API</p>
-      <p>
+      <p className="footer-links">
         <a
           className="footer-link"
           href="https://github.com/SergeiTWeb/myCollection"
@@ -19,6 +19,19 @@ export default function Footer() {
             />
           </svg>
           View source on GitHub
+        </a>
+        <span className="footer-sep">•</span>
+        <a
+          className="footer-link"
+          href="https://web.sergeitumanov.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M3 12h18M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          web.sergeitumanov.com
         </a>
       </p>
     </footer>

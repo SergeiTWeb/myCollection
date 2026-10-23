@@ -20,9 +20,23 @@ export default function SearchPage() {
 
   const [showManualModal, setShowManualModal] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
+  const [showAllArtist, setShowAllArtist] = useState(false);
+  const [artistReleases, setArtistReleases] = useState([]);
+  const [loadingArtist, setLoadingArtist] = useState(false);
 
   const { showToast } = useNotification();
   const getToken = () => localStorage.getItem('token');
+
+  const getArtistInfo = (item) => {
+    if (!item) return null;
+    if (item.artists && Array.isArray(item.artists) && item.artists.length > 0) {
+      return item.artists[0];
+    }
+    if (item.artist) {
+      return { id: null, name: item.artist };
+    }
+    return null;
+  };
 
   useEffect(() => {
     const fetchExisting = async () => {
@@ -68,6 +82,8 @@ export default function SearchPage() {
       }
 
       setSearchResults(await response.json());
+      setShowAllArtist(false);
+      setArtistReleases([]);
     } catch (error) {
       console.error(error);
       setSearchError(error.message || 'Search is unavailable right now.');
@@ -132,23 +148,29 @@ export default function SearchPage() {
     }
   };
 
-  const refreshSavedItems = async () => {
-    const token = getToken();
-    if (!token) return;
+  const handleViewAllArtist = async (item) => {
+    const artist = getArtistInfo(item);
+    if (!artist || !artist.id) {
+      showToast('Artist details not available for this release.', 'error');
+      return;
+    }
+
+    setLoadingArtist(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const [collectionResponse, wishlistResponse] = await Promise.all([
-        fetch(`${API_URL}/collection`, { headers }),
-        fetch(`${API_URL}/wishlist`, { headers })
-      ]);
-      if (collectionResponse.ok) {
-        setCollectionIds(new Set((await collectionResponse.json()).map((item) => item.discogs_id)));
+      const response = await fetch(`${API_URL}/artist/${artist.id}/releases?per_page=50&sort=year&sort_order=asc`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to fetch artist releases');
       }
-      if (wishlistResponse.ok) {
-        setWishlistIds(new Set((await wishlistResponse.json()).map((item) => item.discogs_id)));
-      }
+      const data = await response.json();
+      setArtistReleases(data.releases || []);
+      setShowAllArtist(true);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     } catch (error) {
       console.error(error);
+      showToast(error.message || 'Could not load artist releases.', 'error');
+    } finally {
+      setLoadingArtist(false);
     }
   };
 
@@ -223,15 +245,25 @@ export default function SearchPage() {
             {searchResults.map((item) => {
               const inCollection = collectionIds.has(item.id);
               const inWishlist = wishlistIds.has(item.id);
+              const artist = getArtistInfo(item);
 
               return (
                 <article key={item.id} className="item-card">
                   <RecordCover src={item.cover_image} alt={item.title} />
                   <div className="card-content">
                     <h3>{item.title}</h3>
-                    <p className="meta">
-                      {item.year || 'Unknown'} • {searchFormat === 'Cassette' ? 'Tape' : searchFormat}
-                    </p>
+                    <div className="result-meta">
+                      {artist?.name && <p><strong>Artist:</strong> {artist.name}</p>}
+                      {item.year && <p><strong>Year:</strong> {item.year}</p>}
+                      {(item.label?.[0] || item.label) && <p><strong>Label:</strong> {Array.isArray(item.label) ? item.label[0] : item.label}</p>}
+                      {(item.barcode?.[0] || item.barcode) && <p className="barcode"><strong>Barcode:</strong> {Array.isArray(item.barcode) ? item.barcode.find(b => b && b.length > 5) || item.barcode[0] : item.barcode}</p>}
+                      <p><strong>Format:</strong> {searchFormat === 'Cassette' ? 'Tape' : searchFormat}</p>
+                    </div>
+                    {artist?.id && (
+                      <button className="link-btn" onClick={() => handleViewAllArtist(item)} disabled={loadingArtist}>
+                        View all releases by this artist
+                      </button>
+                    )}
                     <div className="card-actions">
                       <button
                         className={`btn ${inCollection ? 'btn-secondary' : ''}`}
@@ -255,6 +287,30 @@ export default function SearchPage() {
                 </article>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {showAllArtist && artistReleases.length > 0 && (
+        <section className="artist-section" aria-labelledby="artist-title">
+          <div className="artist-header">
+            <h2 id="artist-title" className="page-title">All releases by {getArtistInfo(searchResults[0])?.name || 'artist'}</h2>
+            <button className="btn btn-secondary" onClick={() => setShowAllArtist(false)}>Back to search results</button>
+          </div>
+          <div className="item-grid">
+            {artistReleases.map((release) => (
+              <article key={`${release.id}-${release.type}`} className="item-card">
+                <RecordCover src={release.thumb || release.cover_image} alt={release.title} />
+                <div className="card-content">
+                  <h3>{release.title}</h3>
+                  <div className="result-meta">
+                    {release.year && <p><strong>Year:</strong> {release.year}</p>}
+                    {release.format && <p><strong>Format:</strong> {Array.isArray(release.format) ? release.format.join(', ') : release.format}</p>}
+                    {release.label && <p><strong>Label:</strong> {Array.isArray(release.label) ? release.label[0] : release.label}</p>}
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
