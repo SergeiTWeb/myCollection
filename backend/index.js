@@ -65,12 +65,22 @@ app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 // ==========================================
 // 2. HEALTH CHECK
 // ==========================================
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'online', 
-    time: new Date().toISOString(),
-    message: 'Backend is running on Vercel!'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT 1 as test');
+    res.json({ 
+      status: 'online', 
+      database: 'CONNECTED',
+      time: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ DB Connection Failed in Health Check:', error.message);
+    res.status(500).json({ 
+      status: 'error', 
+      database: 'DISCONNECTED',
+      error: error.message 
+    });
+  }
 });
 
 // ==========================================
@@ -82,8 +92,9 @@ const db = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 5, // Lowered for serverless environments
-  queueLimit: 0
+  connectionLimit: 5,
+  queueLimit: 0,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
 });
 
 // ==========================================
