@@ -18,6 +18,17 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Serve static frontend if built
+const frontendDist = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+} else {
+  const altDist = path.join(__dirname, 'dist');
+  if (fs.existsSync(altDist)) {
+    app.use(express.static(altDist));
+  }
+}
+
 // ==========================================
 // 1. MIDDLEWARE & CORS
 // ==========================================
@@ -518,6 +529,21 @@ app.delete('/api/wishlist/:id', authenticateToken, async (req, res) => {
     console.error('❌ Wishlist Delete Error:', error);
     res.status(500).json({ error: 'Failed' }); 
   }
+});
+
+// Catch-all for SPA routes (only when frontend is built)
+app.get(/^(?!\/api\/).*/, (req, res, next) => {
+  const frontendDist = path.join(__dirname, '..', 'dist');
+  const indexPath = fs.existsSync(frontendDist)
+    ? path.join(frontendDist, 'index.html')
+    : fs.existsSync(path.join(__dirname, 'dist'))
+      ? path.join(__dirname, 'dist', 'index.html')
+      : null;
+
+  if (indexPath && fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return next();
 });
 
 // ==========================================
