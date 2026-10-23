@@ -7,7 +7,7 @@ console.log('🔍 ENV CHECK: DB_USER is', process.env.DB_USER ? 'SET' : 'MISSING
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
@@ -76,25 +76,12 @@ const db = mysql.createPool({
 });
 
 // ==========================================
-// 4. FILE UPLOAD CONFIGURATION (LEGACY FALLBACK)
-// ⚠️ WARNING: Vercel's filesystem is ephemeral. Files saved here will be lost.
-// The code below prioritizes Base64 strings in the 'cover_image' field.
+// 4. FILE UPLOAD CONFIGURATION
+// Vercel's filesystem is read-only/ephemeral, so uploads are kept in memory
+// and persisted in the database as Base64 data URLs instead of on disk.
 // ==========================================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
 const upload = multer({ 
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 4 * 1024 * 1024 }, // 4MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
@@ -102,8 +89,20 @@ const upload = multer({
   }
 });
 
-// Static serving (Will not work reliably on Vercel, but kept for local dev)
-app.use('/uploads', express.static(uploadDir));
+const fileToDataUrl = (file) =>
+  file ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}` : '';
+
+// Legacy static serving (local dev only). Must never throw at startup:
+// on Vercel the filesystem is read-only, which would crash the function.
+const legacyUploadDir = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(legacyUploadDir)) {
+    fs.mkdirSync(legacyUploadDir, { recursive: true });
+  }
+  app.use('/uploads', express.static(legacyUploadDir));
+} catch (error) {
+  console.warn('⚠️ Upload directory unavailable; legacy file serving disabled:', error.message);
+}
 
 // ==========================================
 // 5. EMAIL CONFIGURATION
@@ -224,7 +223,14 @@ app.get('/api/users/:userId/collection', async (req, res) => {
 // ==========================================
 app.get('/api/search', async (req, res) => {
   const { q, format } = req.query;
-  const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(q)}&type=release&format=${format}&per_page=50`;
+  if (!q) return res.status(400).json({ error: 'Search query is required' });
+
+  const url = new URL('https://api.discogs.com/database/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('type', 'release');
+  if (format) url.searchParams.set('format', format);
+  url.searchParams.set('per_page', '50');
+
   try {
     const response = await fetch(url, {
       headers: {
@@ -232,11 +238,18 @@ app.get('/api/search', async (req, res) => {
         'Authorization': `Discogs key=${process.env.DISCOGS_KEY}, secret=${process.env.DISCOGS_SECRET}`
       }
     });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`❌ Discogs API ${response.status}:`, body.slice(0, 500));
+      return res.status(502).json({ error: `Discogs API error (${response.status})` });
+    }
+
     const data = await response.json();
     res.json(data.results || []);
   } catch (error) { 
     console.error('Discogs API Error:', error);
-    res.status(500).json({ error: 'Failed to search Discogs' }); 
+    res.status(502).json({ error: 'Failed to search Discogs' }); 
   }
 });
 
@@ -263,9 +276,8 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
   
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
-  // PRIORITY: Use Base64 string from 'cover_image'. Fallback to uploaded file path.
-  const baseUrl = req.protocol + '://' + req.get('host');
-  const finalCoverImage = cover_image || (req.file ? `${baseUrl}/uploads/${req.file.filename}` : '');
+  // PRIORITY: Use Base64 string from 'cover_image'. Fallback to the in-memory upload.
+  const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
     const [result] = await db.execute(
@@ -283,8 +295,7 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
 app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_file'), async (req, res) => {
   const { title, year, format, cover_image, notes } = req.body;
   
-  const baseUrl = req.protocol + '://' + req.get('host');
-  const finalCoverImage = cover_image || (req.file ? `${baseUrl}/uploads/${req.file.filename}` : '');
+  const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
     await db.execute(
