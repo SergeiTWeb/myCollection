@@ -1,38 +1,52 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useCallback, useState, useContext } from 'react';
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  // 1. Synchronous initialization on page load
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem('token');
-    const email = localStorage.getItem('email');
-    const userId = localStorage.getItem('userId');
-    
-    if (token) {
-      return { token, email, id: userId };
-    }
-    return null;
-  });
+const readStoredUser = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
 
-  // 2. Login function
-  const login = (token, email, userId) => {
+  return {
+    token,
+    email: localStorage.getItem('email') || '',
+    username: localStorage.getItem('username') || '',
+    id: localStorage.getItem('userId')
+  };
+};
+
+export const AuthProvider = ({ children }) => {
+  // Synchronous initialization on page load
+  const [user, setUser] = useState(readStoredUser);
+
+  const login = useCallback((token, email, userId, username = '') => {
     localStorage.setItem('token', token);
     localStorage.setItem('email', email);
     localStorage.setItem('userId', userId);
-    setUser({ token, email, id: userId });
-  };
+    if (username) localStorage.setItem('username', username);
+    setUser({ token, email, username, id: userId });
+  }, []);
 
-  // 3. Logout function
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
+    localStorage.removeItem('username');
     setUser(null);
-  };
+  }, []);
+
+  const updateUser = useCallback((updates) => {
+    setUser((previous) => {
+      if (!previous) return previous;
+
+      const next = { ...previous, ...updates };
+      if (updates.email !== undefined) localStorage.setItem('email', updates.email);
+      if (updates.username !== undefined) localStorage.setItem('username', updates.username);
+      return next;
+    });
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

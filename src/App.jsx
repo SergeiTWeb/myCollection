@@ -8,6 +8,7 @@ import CollectionPage from './pages/CollectionPage';
 import PublicCollectionPage from './pages/PublicCollectionPage';
 import WishlistPage from './pages/WishlistPage';
 import AuthPage from './pages/AuthPage';
+import AccountPage from './pages/AccountPage';
 import Toast from './components/Toast';
 import ConfirmModal from './components/ConfirmModal';
 import './App.css';
@@ -26,6 +27,7 @@ function AppContent({ theme, toggleTheme }) {
         <Route path="/collection" element={<ProtectedRoute><CollectionPage /></ProtectedRoute>} />
         <Route path="/public/:userId" element={<PublicCollectionPage />} />
         <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+        <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       </Routes>
       <Toast />
       <ConfirmModal />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API_URL } from '../config/api';
+import RecordCover from '../components/RecordCover';
 
 export default function PublicCollectionPage() {
   const { userId } = useParams();
@@ -14,11 +15,11 @@ export default function PublicCollectionPage() {
         const res = await fetch(`${API_URL}/users/${userId}/collection`);
         if (res.ok) {
           const data = await res.json();
-          setOwnerEmail(data.userEmail);
+          setOwnerEmail(data.username || data.userEmail || '');
           setItems(data.items);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
@@ -26,35 +27,39 @@ export default function PublicCollectionPage() {
     fetchPublicCollection();
   }, [userId]);
 
-  if (isLoading) return <div style={{textAlign: 'center', padding: '50px', color: 'var(--text-secondary)'}}>Loading collection...</div>;
+  if (isLoading) {
+    return <div className="page-status">Loading collection...</div>;
+  }
+
+  const displayName = ownerEmail ? ownerEmail.split('@')[0] : 'User';
 
   return (
     <section>
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h2 className="page-title" style={{ marginBottom: '8px' }}>
-          Collection: {ownerEmail ? ownerEmail.split('@')[0] : 'User'}
+      <div className="public-header">
+        <h2 className="page-title">
+          Collection: {displayName}
         </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Public View Total: • {items.length} Releases
-        </p>
-        <Link to="/" className="btn btn-secondary" style={{ marginTop: '20px', display: 'inline-block' }}>
+        <p className="public-meta">Public view • {items.length} {items.length === 1 ? 'release' : 'releases'}</p>
+        <Link to="/" className="btn btn-secondary">
           ← Return to search
         </Link>
       </div>
 
       {items.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>This collection is empty.</p>
+        <p className="page-status">This collection is empty.</p>
       ) : (
         <div className="item-grid">
           {items.map((item) => (
-            <div key={item.id} className="item-card">
-              <img src={item.cover_image || 'https://via.placeholder.com/300?text=No+Image'} alt={item.title} />
+            <article key={item.id} className="item-card">
+              <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
-                <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
+                <p className="meta">
+                  {item.year || 'Unknown'} • {item.format === 'Cassette' ? 'Tape' : item.format}
+                </p>
                 {item.notes && <p className="note-text">{item.notes}</p>}
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

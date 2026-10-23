@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ManualAddModal from '../components/ManualAddModal';
+import RecordCover from '../components/RecordCover';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
@@ -40,10 +41,12 @@ export default function CollectionPage() {
       `Are you sure you want to remove "${title}" from your collection? This cannot be undone.`,
       async () => {
         try {
-          await fetch(`${API_URL}/collection/${dbId}`, { method: 'DELETE', headers: getHeaders() });
+          const response = await fetch(`${API_URL}/collection/${dbId}`, { method: 'DELETE', headers: getHeaders() });
+          if (!response.ok) throw new Error('Delete failed');
           showToast('Release removed from collection', 'success');
           fetchItems();
         } catch (err) {
+          console.error(err);
           showToast('Failed to delete release', 'error');
         }
       }
@@ -62,6 +65,7 @@ export default function CollectionPage() {
     link.href = URL.createObjectURL(blob);
     link.download = 'my_music_collection.csv';
     link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const filteredItems = items.filter(item => 
@@ -94,8 +98,8 @@ export default function CollectionPage() {
 
       <div className="page-controls">
         <h2 className="page-title" style={{margin: 0}}>My Collection</h2>
-        <div style={{display: 'flex', gap: '11px', alignItems: 'center', flexWrap: 'wrap'}}>
-          <input type="text" placeholder="Search collection..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)', width: '160px'}} />
+        <div className="page-controls-actions">
+          <input type="text" className="filter-input" placeholder="Search collection..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)'}}>
             <option value="All">All Formats</option>
             <option value="CD">CDs Only</option>
@@ -147,7 +151,7 @@ export default function CollectionPage() {
         <div className="dynamic-grid" style={{ '--grid-cols': cols }}>
           {sortedItems.map((item) => (
             <div key={item.id} className="item-card">
-              <img src={item.cover_image || 'https://via.placeholder.com/300?text=No+Image'} alt={item.title} />
+              <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
                 <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
@@ -165,7 +169,7 @@ export default function CollectionPage() {
         <div className="list-view">
           {sortedItems.map((item) => (
             <div key={item.id} className="list-item">
-              <img src={item.cover_image || 'https://via.placeholder.com/300?text=No+Image'} alt={item.title} />
+              <RecordCover src={item.cover_image} alt={item.title} />
               <div className="list-item-info" style={{ flex: 1 }}>
                 <h3>{item.title}</h3>
                 <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>

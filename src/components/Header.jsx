@@ -6,41 +6,53 @@ export default function Header({ theme, toggleTheme }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const displayName = user?.username || user?.email?.split('@')[0] || 'Account';
+  const initial = displayName.charAt(0).toUpperCase();
+
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const isActive = (path) => (location.pathname === path ? 'active' : '');
+
   return (
     <header className="app-header">
-      <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link to="/" className="logo-link">
         <div className="logo">MyCollection</div>
       </Link>
-      
-      <nav className="nav-links">
-        <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Search</Link>
+
+      <nav className="nav-links" aria-label="Main navigation">
+        <Link to="/" className={isActive('/')}>Search</Link>
         {user && (
           <>
-            <Link to="/collection" className={location.pathname === '/collection' ? 'active' : ''}>Collection</Link>
-            <Link to="/wishlist" className={location.pathname === '/wishlist' ? 'active' : ''}>Wishlist</Link>
+            <Link to="/collection" className={isActive('/collection')}>Collection</Link>
+            <Link to="/wishlist" className={isActive('/wishlist')}>Wishlist</Link>
+            <Link to="/account" className={isActive('/account')}>Account</Link>
           </>
         )}
       </nav>
 
-      <div style={{display: 'flex', gap: '16px', alignItems: 'center'}}>
-        <button className="theme-toggle" onClick={toggleTheme}>
+      <div className="header-actions">
+        <button
+          className="theme-toggle icon-toggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+          title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+        >
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
-        
+
         {user ? (
           <>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Welcome, {user.email}
-            </span>
+            <Link to="/account" className="user-chip" title="Account settings">
+              <span className="user-avatar" aria-hidden="true">{initial}</span>
+              <span className="user-name">{displayName}</span>
+            </Link>
             <button className="theme-toggle" onClick={handleLogout}>Logout</button>
           </>
         ) : (
-          <Link to="/login" className="theme-toggle" style={{textDecoration: 'none', display: 'flex', alignItems: 'center'}}>Login</Link>
+          <Link to="/login" className="theme-toggle login-link">Login</Link>
         )}
       </div>
     </header>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
-import { API_URL } from '../config/api';
+import RecordCover from '../components/RecordCover';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',
@@ -29,10 +29,12 @@ export default function WishlistPage() {
       `Are you sure you want to remove "${title}" from your wishlist?`,
       async () => {
         try {
-          await fetch(`${API_URL}/wishlist/${dbId}`, { method: 'DELETE', headers: getHeaders() });
+          const response = await fetch(`${API_URL}/wishlist/${dbId}`, { method: 'DELETE', headers: getHeaders() });
+          if (!response.ok) throw new Error('Delete failed');
           showToast('Removed from wishlist', 'success');
           fetchItems();
         } catch (err) {
+          console.error(err);
           showToast('Failed to remove item', 'error');
         }
       }
@@ -47,7 +49,7 @@ export default function WishlistPage() {
       if (res.ok) {
         showToast('Moved to Collection!', 'success');
         await fetch(`${API_URL}/wishlist/${item.id}`, { method: 'DELETE', headers: getHeaders() });
-        fetchItems(); 
+        fetchItems();
       } else {
         const err = await res.json();
         showToast(err.error || 'Failed to move item', 'error');
@@ -82,7 +84,7 @@ export default function WishlistPage() {
         <div className="dynamic-grid" style={{ '--grid-cols': cols }}>
           {items.map((item) => (
             <div key={item.id} className="item-card">
-              <img src={item.cover_image || 'https://via.placeholder.com/300?text=No+Image'} alt={item.title} />
+              <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
                 <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
@@ -98,7 +100,7 @@ export default function WishlistPage() {
         <div className="list-view">
           {items.map((item) => (
             <div key={item.id} className="list-item">
-              <img src={item.cover_image || 'https://via.placeholder.com/300?text=No+Image'} alt={item.title} />
+              <RecordCover src={item.cover_image} alt={item.title} />
               <div className="list-item-info">
                 <h3>{item.title}</h3>
                 <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
