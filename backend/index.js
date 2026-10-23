@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// DEBUG LOG: This will show up in your Vercel Function Logs to prove ENV variables are loading
+console.log('🔍 ENV CHECK: DB_HOST is', process.env.DB_HOST ? 'SET' : 'MISSING');
+console.log('🔍 ENV CHECK: DB_USER is', process.env.DB_USER ? 'SET' : 'MISSING');
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -13,23 +18,25 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 1. SECURE CORS
+// ==========================================
+// 1. MIDDLEWARE & CORS
+// ==========================================
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://mycollection.sergeitumanov.com'
+    'https://mycollection.sergeitumanov.com' // Your live frontend
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
-// 2. PAYLOAD LIMIT: Vercel has a hard 4.5MB limit. Set Express to 4MB to catch oversized Base64 early.
+// Vercel has a hard 4.5MB limit. Set Express to 4MB to catch oversized Base64 early.
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 
 // ==========================================
-// HEALTH CHECK
+// 2. HEALTH CHECK
 // ==========================================
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -40,20 +47,22 @@ app.get('/api/health', (req, res) => {
 });
 
 // ==========================================
-// DATABASE CONNECTION
+// 3. DATABASE CONNECTION
 // ==========================================
 const db = mysql.createPool({
-  host: process.env.DB_HOST, 
+  host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD, 
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5, // Lowered for serverless environments
   queueLimit: 0
 });
 
 // ==========================================
-// FILE UPLOAD CONFIGURATION (LEGACY / FALLBACK)
+// 4. FILE UPLOAD CONFIGURATION (LEGACY FALLBACK)
+// ⚠️ WARNING: Vercel's filesystem is ephemeral. Files saved here will be lost.
+// The code below prioritizes Base64 strings in the 'cover_image' field.
 // ==========================================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -70,17 +79,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 4 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 }, // 4MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('Only image files are allowed!'), false);
   }
 });
 
+// Static serving (Will not work reliably on Vercel, but kept for local dev)
 app.use('/uploads', express.static(uploadDir));
 
 // ==========================================
-// EMAIL CONFIGURATION
+// 5. EMAIL CONFIGURATION
 // ==========================================
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -88,7 +98,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ==========================================
-// AUTH MIDDLEWARE
+// 6. AUTH MIDDLEWARE
 // ==========================================
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -103,7 +113,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==========================================
-// AUTH ROUTES
+// 7. AUTH ROUTES
 // ==========================================
 app.post('/api/auth/register', async (req, res) => {
   const { email, password } = req.body;
@@ -159,6 +169,8 @@ app.post('/api/auth/login', async (req, res) => {
     if (users.length === 0) return res.status(401).json({ error: 'Invalid email or password' });
 
     const user = users[0];
+    // Note: If you disabled email verification, comment out the next line:
+    // if (!user.is_verified) return res.status(403).json({ error: 'Please verify your email before logging in.' });
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Invalid email or password' });
@@ -172,7 +184,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// PUBLIC COLLECTION ROUTE
+// 8. PUBLIC COLLECTION ROUTE
 // ==========================================
 app.get('/api/users/:userId/collection', async (req, res) => {
   try {
@@ -192,7 +204,7 @@ app.get('/api/users/:userId/collection', async (req, res) => {
 });
 
 // ==========================================
-// SECURE DISCOGS PROXY
+// 9. SECURE DISCOGS PROXY
 // ==========================================
 app.get('/api/search', async (req, res) => {
   const { q, format } = req.query;
@@ -213,7 +225,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 // ==========================================
-// COLLECTION ROUTES (PROTECTED)
+// 10. COLLECTION ROUTES (PROTECTED)
 // ==========================================
 app.get('/api/collection', authenticateToken, async (req, res) => {
   try {
@@ -235,6 +247,7 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
   
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
+  // PRIORITY: Use Base64 string from 'cover_image'. Fallback to uploaded file path.
   const baseUrl = req.protocol + '://' + req.get('host');
   const finalCoverImage = cover_image || (req.file ? `${baseUrl}/uploads/${req.file.filename}` : '');
 
@@ -280,7 +293,7 @@ app.delete('/api/collection/:id', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// WISHLIST ROUTES (PROTECTED)
+// 11. WISHLIST ROUTES (PROTECTED)
 // ==========================================
 app.get('/api/wishlist', authenticateToken, async (req, res) => {
   try {
@@ -318,10 +331,11 @@ app.delete('/api/wishlist/:id', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// VERCEL SERVERLESS EXPORT & LOCAL FALLBACK
+// 12. VERCEL SERVERLESS EXPORT
 // ==========================================
 module.exports = app;
 
+// Only start the local server if this file is run directly (not imported by Vercel)
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`🚀 Local Backend running on http://localhost:${PORT}`);
