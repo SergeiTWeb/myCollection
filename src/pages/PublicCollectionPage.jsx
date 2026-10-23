@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-
-// IMPORTANT! Before deployment, replace it with an environment variable or the Render URL!
-const API_URL = 'http://localhost:3001/api'; 
+import { API_URL } from '../config/api';
 
 export default function PublicCollectionPage() {
   const { userId } = useParams();

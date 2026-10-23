@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
+import { API_URL } from '../config/api';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
 });
-
-const API_URL = 'http://localhost:3001/api';
 
 export default function WishlistPage() {
   const [items, setItems] = useState([]);

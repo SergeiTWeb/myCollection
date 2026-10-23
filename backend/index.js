@@ -21,12 +21,28 @@ const PORT = process.env.PORT || 3001;
 // ==========================================
 // 1. MIDDLEWARE & CORS
 // ==========================================
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://mycollection.sergeitumanov.com', // Custom domain
+  'https://my-collection-fawn.vercel.app', // Vercel frontend
+  ...(process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(',').map((url) => url.trim()).filter(Boolean)
+    : [])
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://mycollection.sergeitumanov.com' // Your live frontend
-  ],
+  origin: (origin, callback) => {
+    // Allow same-origin/non-browser requests, configured origins, and Vercel previews.
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config/api';
 
-const API_URL = 'http://localhost:3001/api';
 const SITE_KEY = '6LcmMRstAAAAABpQ-A7DLyD_veZOf8YpvAIRzueP';
 
 export default function AuthPage() {

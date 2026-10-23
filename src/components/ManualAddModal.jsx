@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = 'http://localhost:3001/api';
+import { API_URL } from '../config/api';
 
 export default function ManualAddModal({ onClose, onAdded, editItem, listType = 'collection' }) {
   const isEditing = !!editItem;

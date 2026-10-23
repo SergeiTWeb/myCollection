@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import ManualAddModal from '../components/ManualAddModal';
 import AlertModal from '../components/AlertModal';
 import { useNotification } from '../context/NotificationContext';
-
-const API_URL = 'http://localhost:3001/api';
+import { API_URL } from '../config/api';
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');

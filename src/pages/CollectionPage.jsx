@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import ManualAddModal from '../components/ManualAddModal';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config/api';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
 });
-
-const API_URL = 'http://localhost:3001/api';
 
 export default function CollectionPage() {
   const [items, setItems] = useState([]);
