@@ -396,13 +396,13 @@ app.get('/api/users/:userId/collection', async (req, res) => {
 // 9. SECURE DISCOGS PROXY
 // ==========================================
 app.get('/api/search', async (req, res) => {
-  const { q, format } = req.query;
+  const { q, format, type = 'release' } = req.query;
   if (!q) return res.status(400).json({ error: 'Search query is required' });
 
   const url = new URL('https://api.discogs.com/database/search');
   url.searchParams.set('q', q);
-  url.searchParams.set('type', 'release');
-  if (format) url.searchParams.set('format', format);
+  url.searchParams.set('type', type);
+  if (format && format !== 'All') url.searchParams.set('format', format);
   url.searchParams.set('per_page', '50');
 
   try {
@@ -424,6 +424,68 @@ app.get('/api/search', async (req, res) => {
   } catch (error) { 
     console.error('Discogs API Error:', error);
     res.status(502).json({ error: 'Failed to search Discogs' }); 
+  }
+});
+
+app.get('/api/artist/:id/releases', async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, per_page = 50, sort = 'year', sort_order = 'asc' } = req.query;
+  
+  try {
+    const url = new URL(`https://api.discogs.com/artists/${id}/releases`);
+    url.searchParams.set('page', page);
+    url.searchParams.set('per_page', per_page);
+    url.searchParams.set('sort', sort);
+    url.searchParams.set('sort_order', sort_order);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'MyCollectionApp/1.0',
+        'Authorization': `Discogs key=${process.env.DISCOGS_KEY}, secret=${process.env.DISCOGS_SECRET}`
+      }
+    });
+    
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`❌ Discogs Artist API ${response.status}:`, body.slice(0, 500));
+      return res.status(502).json({ error: `Discogs API error (${response.status})` });
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Discogs Artist API Error:', error);
+    res.status(502).json({ error: 'Failed to fetch artist releases' });
+  }
+});
+
+app.get('/api/master/:id/versions', async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, per_page = 50 } = req.query;
+  
+  try {
+    const url = new URL(`https://api.discogs.com/masters/${id}/versions`);
+    url.searchParams.set('page', page);
+    url.searchParams.set('per_page', per_page);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'MyCollectionApp/1.0',
+        'Authorization': `Discogs key=${process.env.DISCOGS_KEY}, secret=${process.env.DISCOGS_SECRET}`
+      }
+    });
+    
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`❌ Discogs Master API ${response.status}:`, body.slice(0, 500));
+      return res.status(502).json({ error: `Discogs API error (${response.status})` });
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Discogs Master API Error:', error);
+    res.status(502).json({ error: 'Failed to fetch master versions' });
   }
 });
 
@@ -502,7 +564,7 @@ app.get('/api/wishlist', authenticateToken, async (req, res) => {
     res.json(rows);
   } catch (error) { 
     console.error('❌ Wishlist Fetch Error:', error);
-    res.status(500).json({ error: 'Failed' }); 
+    res.status(500).json({ error: 'Failed to fetch wishlist' }); 
   }
 });
 
@@ -517,17 +579,21 @@ app.post('/api/wishlist', authenticateToken, async (req, res) => {
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Already in wishlist!' });
     console.error('❌ Wishlist Save Error:', error);
-    res.status(500).json({ error: 'Failed to save' });
+    res.status(500).json({ error: 'Failed to save to wishlist' });
   }
 });
 
 app.delete('/api/wishlist/:id', authenticateToken, async (req, res) => {
   try {
-    await db.execute('DELETE FROM wishlist WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    const wishlistId = req.params.id;
+    if (!wishlistId) return res.status(400).json({ error: 'Invalid wishlist item id' });
+    
+    const [result] = await db.execute('DELETE FROM wishlist WHERE id = ? AND user_id = ?', [wishlistId, req.user.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Wishlist item not found' });
     res.json({ message: 'Removed' });
   } catch (error) { 
     console.error('❌ Wishlist Delete Error:', error);
-    res.status(500).json({ error: 'Failed' }); 
+    res.status(500).json({ error: 'Failed to remove from wishlist' }); 
   }
 });
 
