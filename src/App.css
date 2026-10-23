@@ -62,10 +62,11 @@ img {
 
 .container {
   max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  margin-left: auto !important;
+  margin-right: auto !important;
   padding: 0 24px;
   flex: 1;
-  width: 100%;
   box-sizing: border-box;
 }
 
@@ -217,6 +218,18 @@ img {
   justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: var(--text-primary);
+  text-decoration: none;
 }
 
 .footer-sep {
@@ -548,7 +561,7 @@ textarea:focus {
 
 .page-controls-actions {
   display: flex;
-  gap: 16px;
+  gap: 5px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -700,11 +713,20 @@ textarea:focus {
   max-width: 640px;
   color: var(--text-secondary);
   opacity: 0.7;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: default;
+}
+
+.music-divider:hover {
+  opacity: 1;
+  transform: scaleX(1.08);
+  color: var(--text-primary);
 }
 
 .music-divider svg {
   width: 100%;
   height: auto;
+  transition: transform 0.4s ease; 
 }
 
 /* =========================================
