@@ -44,6 +44,7 @@ body,
   display: flex;
   flex-direction: column;
   margin: 0;
+  align-items: center;
 }
 
 body {
@@ -62,12 +63,23 @@ img {
 
 .container {
   max-width: 1200px;
-  width: 100%;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin: 0 auto !important;
   padding: 0 24px;
-  flex: 1;
+  width: 100%;
   box-sizing: border-box;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+main > .container {
+  align-self: center;
+  max-width: 1200px;
+  width: 100%;
 }
 
 /* =========================================
@@ -82,6 +94,9 @@ img {
   margin-bottom: 48px;
   flex-wrap: wrap;
   gap: 20px;
+  width: 100%;
+  max-width: 1200px;
+  align-self: center;
 }
 
 .logo-link {
@@ -206,6 +221,8 @@ img {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  align-self: stretch;
 }
 
 .app-footer p {
@@ -216,7 +233,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -727,6 +744,39 @@ textarea:focus {
   width: 100%;
   height: auto;
   transition: transform 0.4s ease; 
+}
+
+.decorative-elements {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin: 2rem 0 48px 0;
+  flex-wrap: wrap;
+}
+
+.decorative-item {
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.decorative-item svg {
+  width: 64px;
+  height: 64px;
+}
+
+.item-2 svg {
+  width: 200px;
+  height: 64px;
+}
+
+.decorative-item:hover {
+  opacity: 1;
+  transform: translateY(-5px);
 }
 
 /* =========================================
@@ -1341,8 +1391,8 @@ textarea:focus {
   color: var(--text-secondary);
 }
 
-.page-status {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 40px 0;
+.manual-add-bar {
+  display: flex;
+  justify-content: center;
+  margin: -28px 0 40px 0;
 }

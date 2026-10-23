@@ -215,6 +215,12 @@ export default function SearchPage() {
 
       <MusicDivider />
 
+      <div className="manual-add-bar">
+        <button className="btn btn-secondary" onClick={() => setShowManualModal(true)}>
+          + Add Manually
+        </button>
+      </div>
+
       {searchError && (
         <div className="search-status" role="alert">
           <p className="search-status-title">Search is unavailable</p>
@@ -315,7 +321,7 @@ export default function SearchPage() {
         </section>
       )}
 
-      <HowToUse />
+      {!hasSearched && <HowToUse />}
 
       {showManualModal && (
         <ManualAddModal

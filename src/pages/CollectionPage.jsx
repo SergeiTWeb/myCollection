@@ -125,7 +125,7 @@ export default function CollectionPage() {
             </div>
           )}
           
-          <button className="btn" onClick={() => setShowManualAdd(true)} style={{padding: '10px 16px', fontSize: '14px'}}>+ Add</button>
+          <button className="btn" onClick={() => setShowManualAdd(true)} style={{padding: '10px 16px', fontSize: '14px'}}>+ Add Manually</button>
           <button 
             className="btn btn-secondary" 
             onClick={() => {

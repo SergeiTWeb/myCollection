@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
+import { API_URL } from '../config/api';
 import RecordCover from '../components/RecordCover';
 
 const getHeaders = () => ({
@@ -14,12 +15,19 @@ export default function WishlistPage() {
   
   const { showToast, showConfirm } = useNotification();
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => { 
+    fetchItems(); 
+  }, []);
 
   const fetchItems = async () => {
     try {
       const response = await fetch(`${API_URL}/wishlist`, { headers: getHeaders() });
-      if (response.ok) setItems(await response.json());
+      if (response.ok) {
+        const data = await response.json();
+        setItems(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Wishlist fetch failed:', response.status);
+      }
     } catch (err) { console.error(err); }
   };
 
