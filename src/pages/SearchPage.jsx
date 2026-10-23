@@ -213,13 +213,15 @@ export default function SearchPage() {
         </form>
       </div>
 
-      <MusicDivider />
+      {!hasSearched && <MusicDivider />}
 
-      <div className="manual-add-bar">
-        <button className="btn btn-secondary" onClick={() => setShowManualModal(true)}>
-          + Add Manually
-        </button>
-      </div>
+      {!hasSearched && (
+        <div className="manual-add-bar">
+          <button className="btn btn-secondary" onClick={() => setShowManualModal(true)}>
+            + Add Manually
+          </button>
+        </div>
+      )}
 
       {searchError && (
         <div className="search-status" role="alert">
@@ -244,7 +246,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {searchResults.length > 0 && (
+      {hasSearched && searchResults.length > 0 && (
         <section aria-labelledby="results-title">
           <h2 id="results-title" className="page-title">Results ({searchResults.length})</h2>
           <div className="item-grid">

@@ -75,10 +75,11 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
         onAdded();
         onClose();
       } else {
-        const err = await response.json();
-        setError(err.error || 'Failed to save');
+        const err = await response.json().catch(() => null);
+        setError(err?.error || 'Failed to save');
       }
     } catch (err) {
+      console.error(err);
       setError('Could not connect to backend.');
     } finally {
       setIsSubmitting(false);
@@ -87,7 +88,8 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}> 
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         <h2>{isEditing ? 'Edit Release' : 'Add Release Manually'}</h2>
         
         {error && <p style={{color: '#ff3b30', fontSize: '14px', marginBottom: '16px'}}>{error}</p>}
