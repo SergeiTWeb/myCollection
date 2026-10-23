@@ -25,13 +25,20 @@ export default function CollectionPage() {
 
   const { user, logout } = useAuth(); 
 
-  useEffect(() => { fetchItems(); }, [filter]);
+  useEffect(() => { 
+    fetchItems(); 
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchItems = async () => {
     try {
-      const url = filter === 'All' ? `${API_URL}/collection` : `${API_URL}/collection?format=${filter}`;
+      const url = filter === 'All' ? `${API_URL}/collection` : `${API_URL}/collection?format=${encodeURIComponent(filter)}`;
       const response = await fetch(url, { headers: getHeaders() });
-      if (response.ok) setItems(await response.json());
+      if (response.ok) {
+        const data = await response.json();
+        setItems(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Collection fetch failed:', response.status);
+      }
     } catch (err) { console.error(err); }
   };
 
