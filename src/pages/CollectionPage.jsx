@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import ManualAddModal from '../components/ManualAddModal';
 import RecordCover from '../components/RecordCover';
+import ReleaseDetails from '../components/ReleaseDetails';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
@@ -161,7 +162,7 @@ export default function CollectionPage() {
               <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
-                <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
+                <ReleaseDetails year={item.year} label={item.label} barcode={item.barcode} format={item.format} />
                 <p className="note-text">{item.notes || "No notes yet."}</p>
                 
                 <div className="card-actions">
@@ -179,7 +180,7 @@ export default function CollectionPage() {
               <RecordCover src={item.cover_image} alt={item.title} />
               <div className="list-item-info" style={{ flex: 1 }}>
                 <h3>{item.title}</h3>
-                <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
+                <ReleaseDetails year={item.year} label={item.label} barcode={item.barcode} format={item.format} />
                 <p className="note-text" style={{ marginTop: '8px' }}>{item.notes || "No notes yet."}</p>
               </div>
               <div className="list-item-actions">

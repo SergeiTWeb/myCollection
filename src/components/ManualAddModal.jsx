@@ -7,6 +7,8 @@ const getInitialFormData = (editItem) => {
   return {
     title: editItem?.title || '',
     year: editItem?.year || '',
+    label: editItem?.label || '',
+    barcode: editItem?.barcode || '',
     format: editItem?.format || 'CD',
     cover_image: isStoredCoverEndpoint ? '' : (editItem?.cover_image || ''),
     notes: editItem?.notes || ''
@@ -22,7 +24,11 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((previous) => ({
+      ...previous,
+      [name]: name === 'year' ? value.replace(/\D/g, '').slice(0, 4) : value
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -41,6 +47,10 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return alert('Title is required!');
+    if (!/^\d{4}$/.test(formData.year)) {
+      setError('Year must contain exactly 4 digits.');
+      return;
+    }
     
     setIsSubmitting(true);
     setError('');
@@ -53,6 +63,8 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
       const data = new FormData();
       data.append('title', formData.title);
       data.append('year', formData.year);
+      data.append('label', formData.label);
+      data.append('barcode', formData.barcode);
       data.append('format', formData.format);
       data.append('notes', formData.notes);
       
@@ -101,7 +113,18 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
           <div style={{display: 'flex', gap: '16px'}}>
             <div style={{flex: 1}}>
               <label>Year</label>
-              <input type="number" name="year" value={formData.year} onChange={handleChange} />
+              <input
+                type="text"
+                name="year"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+                title="Enter a four-digit year, such as 1994."
+                placeholder="1994"
+                value={formData.year}
+                onChange={handleChange}
+              />
             </div>
             <div style={{flex: 1}}>
               <label>Format *</label>
@@ -111,6 +134,16 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
                 <option value="Cassette">Tape</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label>Label</label>
+            <input type="text" name="label" maxLength={255} value={formData.label} onChange={handleChange} />
+          </div>
+
+          <div>
+            <label>Barcode</label>
+            <input type="text" name="barcode" maxLength={100} value={formData.barcode} onChange={handleChange} />
           </div>
 
           <div>

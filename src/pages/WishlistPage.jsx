@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
 import { API_URL } from '../config/api';
 import RecordCover from '../components/RecordCover';
+import ReleaseDetails from '../components/ReleaseDetails';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',
@@ -51,7 +52,15 @@ export default function WishlistPage() {
 
   const handleMoveToCollection = async (item) => {
     try {
-      const payload = { id: item.discogs_id, title: item.title, year: item.year, cover_image: item.cover_image, format: item.format };
+      const payload = {
+        id: item.discogs_id,
+        title: item.title,
+        year: item.year,
+        label: item.label,
+        barcode: item.barcode,
+        cover_image: item.cover_image,
+        format: item.format
+      };
       const res = await fetch(`${API_URL}/collection`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
 
       if (res.ok) {
@@ -95,7 +104,7 @@ export default function WishlistPage() {
               <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
-                <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
+                <ReleaseDetails year={item.year} label={item.label} barcode={item.barcode} format={item.format} />
                 <div className="card-actions">
                   <button className="btn" onClick={() => handleMoveToCollection(item)}>➔ Move to Collection</button>
                   <button className="btn btn-danger" onClick={() => handleDelete(item.id, item.title)}>Remove</button>
@@ -111,7 +120,7 @@ export default function WishlistPage() {
               <RecordCover src={item.cover_image} alt={item.title} />
               <div className="list-item-info">
                 <h3>{item.title}</h3>
-                <p className="meta">{item.year} • {item.format === 'Cassette' ? 'Tape' : item.format}</p>
+                <ReleaseDetails year={item.year} label={item.label} barcode={item.barcode} format={item.format} />
               </div>
               <div className="list-item-actions">
                 <button className="btn" onClick={() => handleMoveToCollection(item)}>➔ Move</button>

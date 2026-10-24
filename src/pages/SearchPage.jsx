@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import ManualAddModal from '../components/ManualAddModal';
 import AlertModal from '../components/AlertModal';
 import RecordCover from '../components/RecordCover';
+import ReleaseDetails from '../components/ReleaseDetails';
 import MusicDivider from '../components/MusicDivider';
 import HowToUse from '../components/HowToUse';
 import { useNotification } from '../context/NotificationContext';
@@ -26,6 +27,31 @@ export default function SearchPage() {
 
   const { showToast } = useNotification();
   const getToken = () => localStorage.getItem('token');
+
+  const refreshSavedItems = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const headers = { Authorization: 'Bearer ' + token };
+      const [collectionResponse, wishlistResponse] = await Promise.all([
+        fetch(`${API_URL}/collection`, { headers }),
+        fetch(`${API_URL}/wishlist`, { headers })
+      ]);
+      if (!collectionResponse.ok || !wishlistResponse.ok) {
+        throw new Error('Could not refresh saved releases.');
+      }
+
+      const [collection, wishlist] = await Promise.all([
+        collectionResponse.json(),
+        wishlistResponse.json()
+      ]);
+      setCollectionIds(new Set(collection.map((item) => item.discogs_id)));
+      setWishlistIds(new Set(wishlist.map((item) => item.discogs_id)));
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const getArtistInfo = (item) => {
     if (!item) return null;
@@ -101,7 +127,17 @@ export default function SearchPage() {
     }
 
     try {
-      const payload = { ...item, format: searchFormat };
+      const barcode = Array.isArray(item.barcode)
+        ? item.barcode.find((value) => value && value.length > 5) || item.barcode[0]
+        : item.barcode;
+      const label = Array.isArray(item.label) ? item.label[0] : item.label;
+      const payload = {
+        ...item,
+        year: /^\d{4}$/.test(String(item.year || '')) ? String(item.year) : '',
+        label: label || '',
+        barcode: barcode || '',
+        format: searchFormat
+      };
       const response = await fetch(`${API_URL}/${listType}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -252,13 +288,14 @@ export default function SearchPage() {
                   <RecordCover src={item.cover_image} alt={item.title} />
                   <div className="card-content">
                     <h3>{item.title}</h3>
-                    <div className="result-meta">
-                      {artist?.name && <p><strong>Artist:</strong> {artist.name}</p>}
-                      {item.year && <p><strong>Year:</strong> {item.year}</p>}
-                      {(item.label?.[0] || item.label) && <p><strong>Label:</strong> {Array.isArray(item.label) ? item.label[0] : item.label}</p>}
-                      {(item.barcode?.[0] || item.barcode) && <p className="barcode"><strong>Barcode:</strong> {Array.isArray(item.barcode) ? item.barcode.find(b => b && b.length > 5) || item.barcode[0] : item.barcode}</p>}
-                      <p><strong>Format:</strong> {searchFormat === 'Cassette' ? 'Tape' : searchFormat}</p>
-                    </div>
+                    <ReleaseDetails
+                      year={item.year}
+                      label={Array.isArray(item.label) ? item.label[0] : item.label}
+                      barcode={Array.isArray(item.barcode)
+                        ? item.barcode.find((value) => value && value.length > 5) || item.barcode[0]
+                        : item.barcode}
+                      format={searchFormat}
+                    />
                     {artist?.id && (
                       <button className="link-btn" onClick={() => handleViewAllArtist(item)} disabled={loadingArtist}>
                         View all releases by this artist
@@ -303,11 +340,14 @@ export default function SearchPage() {
                 <RecordCover src={release.thumb || release.cover_image} alt={release.title} />
                 <div className="card-content">
                   <h3>{release.title}</h3>
-                  <div className="result-meta">
-                    {release.year && <p><strong>Year:</strong> {release.year}</p>}
-                    {release.format && <p><strong>Format:</strong> {Array.isArray(release.format) ? release.format.join(', ') : release.format}</p>}
-                    {release.label && <p><strong>Label:</strong> {Array.isArray(release.label) ? release.label[0] : release.label}</p>}
-                  </div>
+                  <ReleaseDetails
+                    year={release.year}
+                    label={Array.isArray(release.label) ? release.label[0] : release.label}
+                    barcode={Array.isArray(release.barcode)
+                      ? release.barcode.find((value) => value && value.length > 5) || release.barcode[0]
+                      : release.barcode}
+                    format={Array.isArray(release.format) ? release.format.join(', ') : release.format}
+                  />
                 </div>
               </article>
             ))}

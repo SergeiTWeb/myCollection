@@ -168,6 +168,7 @@ const fileToDataUrl = (file) =>
   file ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}` : '';
 
 const isDataImage = (value) => typeof value === 'string' && /^data:image\/[\w.+-]+;base64,/.test(value);
+const isValidYear = (value) => value === undefined || value === null || value === '' || /^\d{4}$/.test(String(value));
 
 const getApiOrigin = (req) => {
   const protocol = process.env.NODE_ENV === 'production'
@@ -414,7 +415,7 @@ app.get('/api/users/:userId/collection', async (req, res) => {
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const [rows] = await db.execute(
-      'SELECT id, user_id, title, year, cover_image, format, notes, added_at FROM collection WHERE user_id = ? ORDER BY added_at DESC',
+      'SELECT id, user_id, title, year, label, barcode, cover_image, format, notes, added_at FROM collection WHERE user_id = ? ORDER BY added_at DESC',
       [req.params.userId]
     );
 
@@ -425,6 +426,8 @@ app.get('/api/users/:userId/collection', async (req, res) => {
         id: row.id,
         title: row.title,
         year: row.year,
+        label: row.label,
+        barcode: row.barcode,
         cover_image: collectionCoverUrl(req, row, true),
         format: row.format,
         notes: row.notes,
@@ -581,17 +584,21 @@ app.get('/api/users/:userId/collection/:id/cover', async (req, res) => {
 });
 
 app.post('/api/collection', authenticateToken, upload.single('cover_image_file'), async (req, res) => {
-  const { id: discogsId, title, year, format, cover_image, notes } = req.body;
+  const { id: discogsId, title, year, label, barcode, format, cover_image, notes } = req.body;
   
   if (!title) return res.status(400).json({ error: 'Title is required' });
+  if (req.is('multipart/form-data') && !year) {
+    return res.status(400).json({ error: 'Year is required and must contain exactly 4 digits.' });
+  }
+  if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
 
   // PRIORITY: Use Base64 string from 'cover_image'. Fallback to the in-memory upload.
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO collection (user_id, discogs_id, title, year, cover_image, format, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [req.user.id, discogsId || null, title, String(year || ''), finalCoverImage, format, notes || '']
+      'INSERT INTO collection (user_id, discogs_id, title, year, label, barcode, cover_image, format, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.user.id, discogsId || null, title, String(year || ''), label || '', barcode || '', finalCoverImage, format, notes || '']
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });
   } catch (error) {
@@ -602,14 +609,18 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
 });
 
 app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_file'), async (req, res) => {
-  const { title, year, format, cover_image, notes } = req.body;
+  const { title, year, label, barcode, format, cover_image, notes } = req.body;
+  if (req.is('multipart/form-data') && !year) {
+    return res.status(400).json({ error: 'Year is required and must contain exactly 4 digits.' });
+  }
+  if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
   
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
     await db.execute(
-      'UPDATE collection SET title = ?, year = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
-      [title, String(year || ''), format, finalCoverImage, notes || '', req.params.id, req.user.id]
+      'UPDATE collection SET title = ?, year = ?, label = ?, barcode = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
+      [title, String(year || ''), label || '', barcode || '', format, finalCoverImage, notes || '', req.params.id, req.user.id]
     );
     res.json({ message: 'Updated!' });
   } catch (error) {
@@ -642,11 +653,13 @@ app.get('/api/wishlist', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/wishlist', authenticateToken, async (req, res) => {
-  const { id, title, year, cover_image, format } = req.body;
+  const { id, title, year, label, barcode, cover_image, format } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+  if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
   try {
     const [result] = await db.execute(
-      'INSERT INTO wishlist (user_id, discogs_id, title, year, cover_image, format) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.user.id, id, title, String(year || ''), cover_image || '', format]
+      'INSERT INTO wishlist (user_id, discogs_id, title, year, label, barcode, cover_image, format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.user.id, id || null, title, String(year || ''), label || '', barcode || '', cover_image || '', format]
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });
   } catch (error) {

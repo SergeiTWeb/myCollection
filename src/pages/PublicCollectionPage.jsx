@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import RecordCover from '../components/RecordCover';
+import ReleaseDetails from '../components/ReleaseDetails';
 
 export default function PublicCollectionPage() {
   const { userId } = useParams();
@@ -54,9 +55,7 @@ export default function PublicCollectionPage() {
               <RecordCover src={item.cover_image} alt={item.title} />
               <div className="card-content">
                 <h3>{item.title}</h3>
-                <p className="meta">
-                  {item.year || 'Unknown'} • {item.format === 'Cassette' ? 'Tape' : item.format}
-                </p>
+                <ReleaseDetails year={item.year} label={item.label} barcode={item.barcode} format={item.format} />
                 {item.notes && <p className="note-text">{item.notes}</p>}
               </div>
             </article>
