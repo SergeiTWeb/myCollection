@@ -1,6 +1,45 @@
 import { useState } from 'react';
 import { API_URL } from '../config/api';
 
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const MAX_STORED_IMAGE_BYTES = 500 * 1024;
+const MAX_IMAGE_DIMENSION = 1200;
+
+const optimizeCoverImage = async (file) => {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not prepare the cover image.');
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const qualities = [0.78, 0.62, 0.48];
+    let compressed;
+    for (const quality of qualities) {
+      compressed = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Could not compress the cover image.')),
+          'image/jpeg',
+          quality
+        );
+      });
+      if (compressed.size <= MAX_STORED_IMAGE_BYTES) break;
+    }
+
+    return new File(
+      [compressed],
+      `${file.name.replace(/\.[^.]+$/, '') || 'cover'}.jpg`,
+      { type: 'image/jpeg', lastModified: Date.now() }
+    );
+  } finally {
+    bitmap.close();
+  }
+};
+
 const getInitialFormData = (editItem) => {
   const isStoredCoverEndpoint = editItem?.cover_image?.startsWith(`${API_URL}/`)
     && editItem.cover_image.endsWith('/cover');
@@ -20,6 +59,7 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
 
   const [formData, setFormData] = useState(() => getInitialFormData(editItem));
   const [imageFile, setImageFile] = useState(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,21 +71,32 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
     }));
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setError('Image size must be 3MB or smaller');
-        setImageFile(null);
-      } else {
-        setError('');
-        setImageFile(file);
-      }
+    setImageFile(null);
+    if (!file) return;
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError('Image size must be 3MB or smaller');
+      return;
+    }
+
+    setIsProcessingImage(true);
+    setError('');
+    try {
+      const optimizedFile = await optimizeCoverImage(file);
+      setImageFile(optimizedFile);
+    } catch (error) {
+      console.error('Cover image optimization failed:', error);
+      setError(error.message || 'Could not prepare the cover image.');
+    } finally {
+      setIsProcessingImage(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isProcessingImage) return;
     if (!formData.title.trim()) return alert('Title is required!');
     if (!/^\d{4}$/.test(formData.year)) {
       setError('Year must contain exactly 4 digits.');
@@ -191,8 +242,8 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
 
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose} style={{flex: 1}}>Cancel</button>
-            <button type="submit" className="btn" disabled={isSubmitting} style={{flex: 1}}>
-              {isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add to Collection')}
+            <button type="submit" className="btn" disabled={isSubmitting || isProcessingImage} style={{flex: 1}}>
+              {isProcessingImage ? 'Optimizing image...' : isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add to Collection')}
             </button>
           </div>
         </form>
