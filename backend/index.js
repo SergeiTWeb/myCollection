@@ -178,7 +178,7 @@ const getApiOrigin = (req) => {
 };
 
 const collectionCoverUrl = (req, row, isPublic = false) => {
-  if (!isDataImage(row.cover_image)) return row.cover_image;
+  if (!row.has_stored_cover && !isDataImage(row.cover_image)) return row.cover_image;
   const baseUrl = getApiOrigin(req);
   return isPublic
     ? `${baseUrl}/users/${row.user_id}/collection/${row.id}/cover`
@@ -415,7 +415,11 @@ app.get('/api/users/:userId/collection', async (req, res) => {
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const [rows] = await db.execute(
-      'SELECT id, user_id, title, year, label, barcode, cover_image, format, notes, added_at FROM collection WHERE user_id = ? ORDER BY added_at DESC',
+      `SELECT id, user_id, title, year, label, barcode,
+        CASE WHEN cover_image LIKE 'data:image/%' THEN 1 ELSE 0 END AS has_stored_cover,
+        CASE WHEN cover_image LIKE 'data:image/%' THEN NULL ELSE cover_image END AS cover_image,
+        format, notes, added_at
+       FROM collection WHERE user_id = ? ORDER BY added_at DESC`,
       [req.params.userId]
     );
 
@@ -543,7 +547,11 @@ app.get('/api/master/:id/versions', async (req, res) => {
 app.get('/api/collection', authenticateToken, async (req, res) => {
   try {
     const { format } = req.query;
-    let query = 'SELECT * FROM collection WHERE user_id = ?';
+    let query = `SELECT id, user_id, discogs_id, title, year, label, barcode,
+      CASE WHEN cover_image LIKE 'data:image/%' THEN 1 ELSE 0 END AS has_stored_cover,
+      CASE WHEN cover_image LIKE 'data:image/%' THEN NULL ELSE cover_image END AS cover_image,
+      format, notes, added_at
+      FROM collection WHERE user_id = ?`;
     let params = [req.user.id];
     if (format && format !== 'All') { query += ' AND format = ?'; params.push(format); }
     query += ' ORDER BY added_at DESC';

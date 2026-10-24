@@ -13,6 +13,8 @@ const getHeaders = () => ({
 
 export default function CollectionPage() {
   const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('All');
   const [sortBy, setSortBy] = useState('date_added'); 
   const [cols, setCols] = useState(3); 
@@ -24,24 +26,42 @@ export default function CollectionPage() {
   const [editingItem, setEditingItem] = useState(null); 
   const [showManualAdd, setShowManualAdd] = useState(false);
 
-  const { user, logout } = useAuth(); 
+  const { user } = useAuth();
 
-  useEffect(() => { 
-    fetchItems(); 
-  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchItems = async () => {
+  const fetchItems = async (signal) => {
     try {
       const url = filter === 'All' ? `${API_URL}/collection` : `${API_URL}/collection?format=${encodeURIComponent(filter)}`;
-      const response = await fetch(url, { headers: getHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setItems(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Collection fetch failed:', response.status);
+      const timeoutSignal = AbortSignal.timeout(15000);
+      const requestSignal = signal
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal;
+      const response = await fetch(url, { headers: getHeaders(), signal: requestSignal });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `Collection request failed (${response.status}).`);
       }
-    } catch (err) { console.error(err); }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('The server returned an invalid collection response.');
+      setItems(data);
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      console.error('Collection fetch failed:', error);
+      setLoadError(error.name === 'TimeoutError'
+        ? 'The collection request timed out. Please retry; if it continues, check the collection table in the database.'
+        : error.message || 'Could not load the collection.');
+    } finally {
+      if (!signal?.aborted) setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // fetchItems updates state only after the request completes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchItems(controller.signal);
+    return () => controller.abort();
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = (dbId, title) => {
     showConfirm(
@@ -153,7 +173,24 @@ export default function CollectionPage() {
         </div>
       </div>
 
-      {sortedItems.length === 0 ? (
+      {isLoading ? (
+        <p role="status" style={{color: 'var(--text-secondary)'}}>Loading collection...</p>
+      ) : loadError ? (
+        <div role="alert" className="search-status">
+          <p className="search-status-title">Collection could not be loaded</p>
+          <p className="search-status-text">{loadError}</p>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              setIsLoading(true);
+              setLoadError('');
+              fetchItems();
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      ) : sortedItems.length === 0 ? (
         <p style={{color: 'var(--text-secondary)'}}>{items.length === 0 ? 'Your collection is empty.' : 'No matches found.'}</p>
       ) : viewMode === 'grid' ? (
         <div className="dynamic-grid" style={{ '--grid-cols': cols }}>
