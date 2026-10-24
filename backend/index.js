@@ -604,7 +604,8 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
-    const [result] = await db.execute(
+    // Use mysql2's escaped query formatter for large Base64 cover values; the hosted DB rejects them via prepared execute.
+    const [result] = await db.query(
       'INSERT INTO collection (user_id, discogs_id, title, year, label, barcode, cover_image, format, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [req.user.id, discogsId || null, title, String(year || ''), label || '', barcode || '', finalCoverImage, format, notes || '']
     );
@@ -626,7 +627,8 @@ app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_fil
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
 
   try {
-    await db.execute(
+    // Cover-image updates can carry the same large Base64 value as inserts.
+    await db.query(
       'UPDATE collection SET title = ?, year = ?, label = ?, barcode = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
       [title, String(year || ''), label || '', barcode || '', format, finalCoverImage, notes || '', req.params.id, req.user.id]
     );
