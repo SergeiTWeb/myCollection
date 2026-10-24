@@ -157,7 +157,7 @@ const verifyRecaptcha = async (token) => {
 // ==========================================
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024 }, // 4MB limit
+  limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('Only image files are allowed!'), false);
@@ -166,6 +166,32 @@ const upload = multer({
 
 const fileToDataUrl = (file) =>
   file ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}` : '';
+
+const isDataImage = (value) => typeof value === 'string' && /^data:image\/[\w.+-]+;base64,/.test(value);
+
+const getApiOrigin = (req) => {
+  const protocol = process.env.NODE_ENV === 'production'
+    ? 'https'
+    : (req.headers['x-forwarded-proto'] || req.protocol).split(',')[0];
+  return `${protocol}://${req.get('host')}/api`;
+};
+
+const collectionCoverUrl = (req, row, isPublic = false) => {
+  if (!isDataImage(row.cover_image)) return row.cover_image;
+  const baseUrl = getApiOrigin(req);
+  return isPublic
+    ? `${baseUrl}/users/${row.user_id}/collection/${row.id}/cover`
+    : `${baseUrl}/collection/${row.id}/cover`;
+};
+
+const sendStoredImage = (res, value) => {
+  const match = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/.exec(value || '');
+  if (!match) return res.status(404).json({ error: 'Cover image not found' });
+
+  res.set('Content-Type', match[1]);
+  res.set('Cache-Control', 'private, max-age=3600');
+  return res.send(Buffer.from(match[2], 'base64'));
+};
 
 // Legacy static serving (local dev only). Must never throw at startup:
 // on Vercel the filesystem is read-only, which would crash the function.
@@ -388,14 +414,22 @@ app.get('/api/users/:userId/collection', async (req, res) => {
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const [rows] = await db.execute(
-      'SELECT id, title, year, cover_image, format, notes, added_at FROM collection WHERE user_id = ? ORDER BY added_at DESC',
+      'SELECT id, user_id, title, year, cover_image, format, notes, added_at FROM collection WHERE user_id = ? ORDER BY added_at DESC',
       [req.params.userId]
     );
 
     res.json({
       userEmail: users[0].email,
       username: users[0].username || defaultUsername(users[0].email),
-      items: rows
+      items: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        year: row.year,
+        cover_image: collectionCoverUrl(req, row, true),
+        format: row.format,
+        notes: row.notes,
+        added_at: row.added_at
+      }))
     });
   } catch (error) {
     console.error('❌ Public Collection Error:', error);
@@ -511,10 +545,38 @@ app.get('/api/collection', authenticateToken, async (req, res) => {
     if (format && format !== 'All') { query += ' AND format = ?'; params.push(format); }
     query += ' ORDER BY added_at DESC';
     const [rows] = await db.execute(query, params);
-    res.json(rows);
+    res.json(rows.map((row) => ({ ...row, cover_image: collectionCoverUrl(req, row) })));
   } catch (error) { 
     console.error('❌ Fetch Collection Error:', error);
     res.status(500).json({ error: 'Failed to fetch' }); 
+  }
+});
+
+app.get('/api/collection/:id/cover', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      'SELECT cover_image FROM collection WHERE id = ? AND user_id = ?',
+      [req.params.id, req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Collection item not found' });
+    return sendStoredImage(res, rows[0].cover_image);
+  } catch (error) {
+    console.error('❌ Fetch Collection Cover Error:', error);
+    return res.status(500).json({ error: 'Failed to fetch cover image' });
+  }
+});
+
+app.get('/api/users/:userId/collection/:id/cover', async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      'SELECT cover_image FROM collection WHERE id = ? AND user_id = ?',
+      [req.params.id, req.params.userId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Collection item not found' });
+    return sendStoredImage(res, rows[0].cover_image);
+  } catch (error) {
+    console.error('❌ Fetch Public Collection Cover Error:', error);
+    return res.status(500).json({ error: 'Failed to fetch cover image' });
   }
 });
 
@@ -546,7 +608,7 @@ app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_fil
 
   try {
     await db.execute(
-      'UPDATE collection SET title = ?, year = ?, format = ?, cover_image = ?, notes = ? WHERE id = ? AND user_id = ?',
+      'UPDATE collection SET title = ?, year = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
       [title, String(year || ''), format, finalCoverImage, notes || '', req.params.id, req.user.id]
     );
     res.json({ message: 'Updated!' });

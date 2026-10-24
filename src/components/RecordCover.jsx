@@ -1,13 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { API_URL } from '../config/api';
 
 /**
  * Displays a release cover, falling back to an inline vinyl record graphic
  * when there is no image or the remote image fails to load.
  */
 export default function RecordCover({ src, alt, className = '' }) {
-  const [failed, setFailed] = useState(false);
+  const [loadedImage, setLoadedImage] = useState(null);
+  const [failedSrc, setFailedSrc] = useState('');
+  const needsAuthorizedFetch = typeof src === 'string'
+    && src.startsWith(`${API_URL}/`)
+    && src.endsWith('/cover');
 
-  if (!src || failed) {
+  useEffect(() => {
+    if (!needsAuthorizedFetch) return undefined;
+
+    const controller = new AbortController();
+    let objectUrl;
+    let active = true;
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(src, { headers, signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Cover image request failed (${response.status})`);
+        return response.blob();
+      })
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        if (active) {
+          setLoadedImage({ src, url: objectUrl });
+          setFailedSrc('');
+        } else {
+          URL.revokeObjectURL(objectUrl);
+        }
+      })
+      .catch((error) => {
+        if (active && error.name !== 'AbortError') setFailedSrc(src);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [src, needsAuthorizedFetch]);
+
+  const imageSrc = needsAuthorizedFetch
+    ? (loadedImage?.src === src ? loadedImage.url : '')
+    : src;
+  const failed = failedSrc === src;
+
+  if (!imageSrc || failed) {
     return (
       <div
         className={`cover-placeholder ${className}`.trim()}
@@ -26,11 +70,11 @@ export default function RecordCover({ src, alt, className = '' }) {
 
   return (
     <img
-      src={src}
+      src={imageSrc}
       alt={alt}
       className={className}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(src)}
     />
   );
 }

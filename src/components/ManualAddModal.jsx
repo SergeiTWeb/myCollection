@@ -1,27 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { API_URL } from '../config/api';
+
+const getInitialFormData = (editItem) => {
+  const isStoredCoverEndpoint = editItem?.cover_image?.startsWith(`${API_URL}/`)
+    && editItem.cover_image.endsWith('/cover');
+  return {
+    title: editItem?.title || '',
+    year: editItem?.year || '',
+    format: editItem?.format || 'CD',
+    cover_image: isStoredCoverEndpoint ? '' : (editItem?.cover_image || ''),
+    notes: editItem?.notes || ''
+  };
+};
 
 export default function ManualAddModal({ onClose, onAdded, editItem, listType = 'collection' }) {
   const isEditing = !!editItem;
 
-  const [formData, setFormData] = useState({
-    title: '', year: '', format: 'CD', cover_image: '', notes: ''
-  });
+  const [formData, setFormData] = useState(() => getInitialFormData(editItem));
   const [imageFile, setImageFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (editItem) {
-      setFormData({
-        title: editItem.title || '',
-        year: editItem.year || '',
-        format: editItem.format || 'CD',
-        cover_image: editItem.cover_image || '',
-        notes: editItem.notes || ''
-      });
-    }
-  }, [editItem]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,8 +28,8 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB');
+      if (file.size > 3 * 1024 * 1024) {
+        setError('Image size must be 3MB or smaller');
         setImageFile(null);
       } else {
         setError('');
