@@ -169,7 +169,7 @@ const fileToDataUrl = (file) =>
 
 const isDataImage = (value) => typeof value === 'string' && /^data:image\/[\w.+-]+;base64,/.test(value);
 const isValidYear = (value) => value === undefined || value === null || value === '' || /^\d{4}$/.test(String(value));
-const nullableText = (value) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+const optionalText = (value) => (typeof value === 'string' ? value.trim() : '');
 
 const getApiOrigin = (req) => {
   const protocol = process.env.NODE_ENV === 'production'
@@ -603,8 +603,8 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
 
   // PRIORITY: Use Base64 string from 'cover_image'. Fallback to the in-memory upload.
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
-  const normalizedLabel = nullableText(label);
-  const normalizedBarcode = nullableText(barcode);
+  const normalizedLabel = optionalText(label);
+  const normalizedBarcode = optionalText(barcode);
 
   try {
     // Use mysql2's escaped query formatter for cover values; the hosted DB rejects these via prepared execute.
@@ -628,8 +628,8 @@ app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_fil
   if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
   
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
-  const normalizedLabel = nullableText(label);
-  const normalizedBarcode = nullableText(barcode);
+  const normalizedLabel = optionalText(label);
+  const normalizedBarcode = optionalText(barcode);
 
   try {
     // Cover-image updates can carry the same large Base64 value as inserts.
@@ -671,8 +671,8 @@ app.post('/api/wishlist', authenticateToken, async (req, res) => {
   const { id, title, year, label, barcode, cover_image, format } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
-  const normalizedLabel = nullableText(label);
-  const normalizedBarcode = nullableText(barcode);
+  const normalizedLabel = optionalText(label);
+  const normalizedBarcode = optionalText(barcode);
   try {
     const [result] = await db.execute(
       'INSERT INTO wishlist (user_id, discogs_id, title, year, label, barcode, cover_image, format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',

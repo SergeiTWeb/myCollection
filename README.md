@@ -104,8 +104,8 @@ user_id INT NOT NULL,
 discogs_id VARCHAR(100) DEFAULT NULL,
 title VARCHAR(255) NOT NULL,
 year VARCHAR(10) DEFAULT '',
-label VARCHAR(255) DEFAULT '',
-barcode VARCHAR(100) DEFAULT '',
+label VARCHAR(255) NOT NULL DEFAULT '',
+barcode VARCHAR(100) NOT NULL DEFAULT '',
 cover_image LONGTEXT DEFAULT NULL,
 format VARCHAR(50) DEFAULT 'CD',
 notes TEXT DEFAULT NULL,
@@ -128,8 +128,8 @@ user_id INT NOT NULL,
 discogs_id VARCHAR(100) DEFAULT NULL,
 title VARCHAR(255) NOT NULL,
 year VARCHAR(10) DEFAULT '',
-label VARCHAR(255) DEFAULT '',
-barcode VARCHAR(100) DEFAULT '',
+label VARCHAR(255) NOT NULL DEFAULT '',
+barcode VARCHAR(100) NOT NULL DEFAULT '',
 cover_image LONGTEXT DEFAULT NULL,
 format VARCHAR(50) DEFAULT 'CD',
 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -142,6 +142,23 @@ added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+```
+
+For an existing database, clean any previous `NULL` metadata and prevent new `NULL` values:
+
+```sql
+UPDATE collection SET label = '' WHERE label IS NULL;
+UPDATE collection SET barcode = '' WHERE barcode IS NULL;
+UPDATE wishlist SET label = '' WHERE label IS NULL;
+UPDATE wishlist SET barcode = '' WHERE barcode IS NULL;
+
+ALTER TABLE collection
+  MODIFY label VARCHAR(255) NOT NULL DEFAULT '',
+  MODIFY barcode VARCHAR(100) NOT NULL DEFAULT '';
+
+ALTER TABLE wishlist
+  MODIFY label VARCHAR(255) NOT NULL DEFAULT '',
+  MODIFY barcode VARCHAR(100) NOT NULL DEFAULT '';
 ```
 
 6. Нажмите "Выполнить" (Run).
