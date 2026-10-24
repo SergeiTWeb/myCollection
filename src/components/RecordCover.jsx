@@ -40,6 +40,9 @@ export default function RecordCover({ src, alt, className = '' }) {
     fetch(src, { headers, signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`Cover image request failed (${response.status})`);
+        if (!response.headers.get('content-type')?.startsWith('image/')) {
+          throw new Error('Cover image endpoint returned a non-image response.');
+        }
         return response.blob();
       })
       .then((blob) => {
@@ -93,7 +96,10 @@ export default function RecordCover({ src, alt, className = '' }) {
       alt={alt}
       className={className}
       loading="lazy"
-      onError={() => setFailedSrc(src)}
+      onError={(error) => {
+        console.error('Saved cover could not be displayed:', error);
+        setFailedSrc(src);
+      }}
     />
   );
 }

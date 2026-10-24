@@ -194,12 +194,18 @@ const collectionCoverUrl = (req, row, isPublic = false) => {
 };
 
 const sendStoredImage = (res, value) => {
-  const match = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/.exec(value || '');
+  const match = /^data:(image\/[\w.+-]+);base64,([\s\S]*)$/i.exec(value || '');
   if (!match) return res.status(404).json({ error: 'Cover image not found' });
 
-  res.set('Content-Type', match[1]);
+  const encodedImage = match[2].replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encodedImage)) {
+    return res.status(404).json({ error: 'Cover image data is invalid' });
+  }
+
+  res.set('Content-Type', match[1].toLowerCase());
   res.set('Cache-Control', 'private, max-age=3600');
-  return res.send(Buffer.from(match[2], 'base64'));
+  res.set('X-Content-Type-Options', 'nosniff');
+  return res.send(Buffer.from(encodedImage, 'base64'));
 };
 
 // Legacy static serving (local dev only). Must never throw at startup:
@@ -575,7 +581,7 @@ app.get('/api/collection', authenticateToken, async (req, res) => {
 
 app.get('/api/collection/:id/cover', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       'SELECT cover_image FROM collection WHERE id = ? AND user_id = ?',
       [req.params.id, req.user.id]
     );
@@ -589,7 +595,7 @@ app.get('/api/collection/:id/cover', authenticateToken, async (req, res) => {
 
 app.get('/api/users/:userId/collection/:id/cover', async (req, res) => {
   try {
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       'SELECT cover_image FROM collection WHERE id = ? AND user_id = ?',
       [req.params.id, req.params.userId]
     );
