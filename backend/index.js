@@ -169,6 +169,7 @@ const fileToDataUrl = (file) =>
 
 const isDataImage = (value) => typeof value === 'string' && /^data:image\/[\w.+-]+;base64,/.test(value);
 const isValidYear = (value) => value === undefined || value === null || value === '' || /^\d{4}$/.test(String(value));
+const nullableText = (value) => (typeof value === 'string' && value.trim() ? value.trim() : null);
 
 const getApiOrigin = (req) => {
   const protocol = process.env.NODE_ENV === 'production'
@@ -602,12 +603,14 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
 
   // PRIORITY: Use Base64 string from 'cover_image'. Fallback to the in-memory upload.
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
+  const normalizedLabel = nullableText(label);
+  const normalizedBarcode = nullableText(barcode);
 
   try {
-    // Use mysql2's escaped query formatter for large Base64 cover values; the hosted DB rejects them via prepared execute.
+    // Use mysql2's escaped query formatter for cover values; the hosted DB rejects these via prepared execute.
     const [result] = await db.query(
       'INSERT INTO collection (user_id, discogs_id, title, year, label, barcode, cover_image, format, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [req.user.id, discogsId || null, title, String(year || ''), label || '', barcode || '', finalCoverImage, format, notes || '']
+      [req.user.id, discogsId || null, title, String(year || ''), normalizedLabel, normalizedBarcode, finalCoverImage, format, notes || '']
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });
   } catch (error) {
@@ -625,12 +628,14 @@ app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_fil
   if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
   
   const finalCoverImage = cover_image || fileToDataUrl(req.file);
+  const normalizedLabel = nullableText(label);
+  const normalizedBarcode = nullableText(barcode);
 
   try {
     // Cover-image updates can carry the same large Base64 value as inserts.
     await db.query(
       'UPDATE collection SET title = ?, year = ?, label = ?, barcode = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
-      [title, String(year || ''), label || '', barcode || '', format, finalCoverImage, notes || '', req.params.id, req.user.id]
+      [title, String(year || ''), normalizedLabel, normalizedBarcode, format, finalCoverImage, notes || '', req.params.id, req.user.id]
     );
     res.json({ message: 'Updated!' });
   } catch (error) {
@@ -666,10 +671,12 @@ app.post('/api/wishlist', authenticateToken, async (req, res) => {
   const { id, title, year, label, barcode, cover_image, format } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!isValidYear(year)) return res.status(400).json({ error: 'Year must contain exactly 4 digits.' });
+  const normalizedLabel = nullableText(label);
+  const normalizedBarcode = nullableText(barcode);
   try {
     const [result] = await db.execute(
       'INSERT INTO wishlist (user_id, discogs_id, title, year, label, barcode, cover_image, format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [req.user.id, id || null, title, String(year || ''), label || '', barcode || '', cover_image || '', format]
+      [req.user.id, id || null, title, String(year || ''), normalizedLabel, normalizedBarcode, cover_image || '', format]
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });
   } catch (error) {
