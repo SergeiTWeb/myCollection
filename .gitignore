@@ -11,6 +11,8 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+!backend/dist/
+!backend/dist/**
 
 # ==========================================
 # 3. Secrets

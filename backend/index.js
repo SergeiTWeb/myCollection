@@ -169,7 +169,14 @@ const fileToDataUrl = (file) =>
 
 const isDataImage = (value) => typeof value === 'string' && /^data:image\/[\w.+-]+;base64,/.test(value);
 const isValidYear = (value) => value === undefined || value === null || value === '' || /^\d{4}$/.test(String(value));
-const optionalText = (value) => (typeof value === 'string' ? value.trim() : '');
+const optionalText = (value) => {
+  const values = Array.isArray(value) ? value : [value];
+  return values
+    .filter((entry) => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(', ');
+};
 
 const getApiOrigin = (req) => {
   const protocol = process.env.NODE_ENV === 'production'
@@ -416,10 +423,11 @@ app.get('/api/users/:userId/collection', async (req, res) => {
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const [rows] = await db.execute(
-      `SELECT id, user_id, title, year, label, barcode,
+      `SELECT id, user_id, title, year,
         CASE WHEN cover_image LIKE 'data:image/%' THEN 1 ELSE 0 END AS has_stored_cover,
         CASE WHEN cover_image LIKE 'data:image/%' THEN NULL ELSE cover_image END AS cover_image,
-        format, notes, added_at
+        format, notes, added_at,
+        COALESCE(label, '') AS label, COALESCE(barcode, '') AS barcode
        FROM collection WHERE user_id = ? ORDER BY added_at DESC`,
       [req.params.userId]
     );
@@ -548,7 +556,8 @@ app.get('/api/master/:id/versions', async (req, res) => {
 app.get('/api/collection', authenticateToken, async (req, res) => {
   try {
     const { format } = req.query;
-    let query = `SELECT id, user_id, discogs_id, title, year, label, barcode,
+    let query = `SELECT id, user_id, discogs_id, title, year,
+      COALESCE(label, '') AS label, COALESCE(barcode, '') AS barcode,
       CASE WHEN cover_image LIKE 'data:image/%' THEN 1 ELSE 0 END AS has_stored_cover,
       CASE WHEN cover_image LIKE 'data:image/%' THEN NULL ELSE cover_image END AS cover_image,
       format, notes, added_at
@@ -609,7 +618,7 @@ app.post('/api/collection', authenticateToken, upload.single('cover_image_file')
   try {
     // Use mysql2's escaped query formatter for cover values; the hosted DB rejects these via prepared execute.
     const [result] = await db.query(
-      'INSERT INTO collection (user_id, discogs_id, title, year, label, barcode, cover_image, format, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO collection (user_id, discogs_id, title, year, label, barcode, cover_image, format, notes) VALUES (?, ?, ?, ?, COALESCE(?, \'\'), COALESCE(?, \'\'), ?, ?, ?)',
       [req.user.id, discogsId || null, title, String(year || ''), normalizedLabel, normalizedBarcode, finalCoverImage, format, notes || '']
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });
@@ -634,7 +643,7 @@ app.put('/api/collection/:id', authenticateToken, upload.single('cover_image_fil
   try {
     // Cover-image updates can carry the same large Base64 value as inserts.
     await db.query(
-      'UPDATE collection SET title = ?, year = ?, label = ?, barcode = ?, format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
+      'UPDATE collection SET title = ?, year = ?, label = COALESCE(?, \'\'), barcode = COALESCE(?, \'\'), format = ?, cover_image = COALESCE(NULLIF(?, \'\'), cover_image), notes = ? WHERE id = ? AND user_id = ?',
       [title, String(year || ''), normalizedLabel, normalizedBarcode, format, finalCoverImage, notes || '', req.params.id, req.user.id]
     );
     res.json({ message: 'Updated!' });
@@ -675,7 +684,7 @@ app.post('/api/wishlist', authenticateToken, async (req, res) => {
   const normalizedBarcode = optionalText(barcode);
   try {
     const [result] = await db.execute(
-      'INSERT INTO wishlist (user_id, discogs_id, title, year, label, barcode, cover_image, format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO wishlist (user_id, discogs_id, title, year, label, barcode, cover_image, format) VALUES (?, ?, ?, ?, COALESCE(?, \'\'), COALESCE(?, \'\'), ?, ?)',
       [req.user.id, id || null, title, String(year || ''), normalizedLabel, normalizedBarcode, cover_image || '', format]
     );
     res.status(201).json({ message: 'Added!', id: result.insertId });

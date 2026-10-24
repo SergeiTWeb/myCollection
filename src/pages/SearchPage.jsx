@@ -28,6 +28,13 @@ export default function SearchPage() {
   const { showToast } = useNotification();
   const getToken = () => localStorage.getItem('token');
 
+  const normalizeDiscogsField = (value) => {
+    const values = Array.isArray(value) ? value : [value];
+    return values
+      .filter((entry) => typeof entry === 'string' && entry.trim())
+      .map((entry) => entry.trim());
+  };
+
   const refreshSavedItems = async () => {
     const token = getToken();
     if (!token) return;
@@ -127,15 +134,14 @@ export default function SearchPage() {
     }
 
     try {
-      const barcode = Array.isArray(item.barcode)
-        ? item.barcode.find((value) => value && value.length > 5) || item.barcode[0]
-        : item.barcode;
-      const label = Array.isArray(item.label) ? item.label[0] : item.label;
+      const barcodeValues = normalizeDiscogsField(item.barcode);
+      const barcode = barcodeValues.find((value) => value.length > 5) || barcodeValues[0] || '';
+      const label = normalizeDiscogsField(item.label ?? item.labels)[0] || '';
       const payload = {
         ...item,
         year: /^\d{4}$/.test(String(item.year || '')) ? String(item.year) : '',
-        label: label || '',
-        barcode: barcode || '',
+        label,
+        barcode,
         format: searchFormat
       };
       const response = await fetch(`${API_URL}/${listType}`, {
