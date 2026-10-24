@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '../config/api';
 
+const isAuthorizedCoverUrl = (src) => {
+  if (typeof src !== 'string') return false;
+
+  try {
+    const coverUrl = new URL(src, window.location.origin);
+    const apiUrl = new URL(API_URL, window.location.origin);
+    const apiPath = apiUrl.pathname.replace(/\/+$/, '');
+    const isCollectionCover = /\/collection\/\d+\/cover$/.test(coverUrl.pathname)
+      || /\/users\/[^/]+\/collection\/\d+\/cover$/.test(coverUrl.pathname);
+
+    return coverUrl.origin === apiUrl.origin
+      && coverUrl.pathname.startsWith(`${apiPath}/`)
+      && isCollectionCover;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Displays a release cover, falling back to an inline vinyl record graphic
  * when there is no image or the remote image fails to load.
@@ -8,9 +26,7 @@ import { API_URL } from '../config/api';
 export default function RecordCover({ src, alt, className = '' }) {
   const [loadedImage, setLoadedImage] = useState(null);
   const [failedSrc, setFailedSrc] = useState('');
-  const needsAuthorizedFetch = typeof src === 'string'
-    && src.startsWith(`${API_URL}/`)
-    && src.endsWith('/cover');
+  const needsAuthorizedFetch = isAuthorizedCoverUrl(src);
 
   useEffect(() => {
     if (!needsAuthorizedFetch) return undefined;
@@ -36,7 +52,10 @@ export default function RecordCover({ src, alt, className = '' }) {
         }
       })
       .catch((error) => {
-        if (active && error.name !== 'AbortError') setFailedSrc(src);
+        if (active && error.name !== 'AbortError') {
+          console.error('Could not load saved cover image:', error);
+          setFailedSrc(src);
+        }
       });
 
     return () => {

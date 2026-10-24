@@ -137,13 +137,29 @@ export default function ManualAddModal({ onClose, onAdded, editItem, listType = 
           </div>
 
           <div>
-            <label>Label</label>
-            <input type="text" name="label" maxLength={255} value={formData.label} onChange={handleChange} />
+            <label htmlFor="release-label">Label</label>
+            <input
+              id="release-label"
+              type="text"
+              name="label"
+              maxLength={255}
+              placeholder="Record label (optional)"
+              value={formData.label}
+              onChange={handleChange}
+            />
           </div>
 
           <div>
-            <label>Barcode</label>
-            <input type="text" name="barcode" maxLength={100} value={formData.barcode} onChange={handleChange} />
+            <label htmlFor="release-barcode">Barcode</label>
+            <input
+              id="release-barcode"
+              type="text"
+              name="barcode"
+              maxLength={100}
+              placeholder="Barcode (optional)"
+              value={formData.barcode}
+              onChange={handleChange}
+            />
           </div>
 
           <div>
